@@ -349,7 +349,7 @@ cd /build
 | 错误 | 原因 | 解决 |
 |------|------|------|
 | `cannot execute binary file` | ELF 格式不匹配 | 确认编译架构正确 |
-| `fork: Function not implemented` | seccomp 问题 | 设置 `PROOT_NO_SECCOMP=1` |
+| `fork: Function not implemented` | seccomp/兼容性问题 | **仅在老旧内核（Linux < 4.14 / 常见于 Android 9-）或确认 seccomp 崩溃时**，才临时设置 `PROOT_NO_SECCOMP=1` 兜底；Android 10+（Linux 4.14+）建议保持 unset |
 | `libtalloc.so.2: cannot open` | 库文件缺失 | 确认 libtalloc 已解压 |
 
 ## 参考资料
