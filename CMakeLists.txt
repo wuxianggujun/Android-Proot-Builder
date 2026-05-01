@@ -25,6 +25,10 @@ set(TALLOC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/talloc)
 # 运行时优先读取 PROOT_LOADER 环境变量，找不到才用此默认值
 set(PROOT_LOADER_DIR "/data/local/tmp" CACHE STRING
     "PRoot loader 默认安装目录（运行时可通过 PROOT_LOADER 环境变量覆盖）")
+option(TINA_PROOT_16KB_PAGE_ALIGNMENT
+    "Link PRoot binaries with 16 KB max page size for Android 15+ devices"
+    ON
+)
 
 # ==========================================================================
 # 架构检测 — 根据 Android ABI 设置 loader 加载地址及特性开关
@@ -489,6 +493,20 @@ target_link_options(proot-loader PRIVATE
     "LINKER:-z,noexecstack"
 )
 
+if(PROOT_HAS_POKEDATA_WORKAROUND)
+    # Android NDK/LLD may garbage-collect this unreferenced ARM64 stub.
+    # loader-info.c must read the symbol from the final loader binary.
+    target_link_options(proot-loader PRIVATE
+        "LINKER:--undefined=pokedata_workaround"
+    )
+endif()
+
+if(TINA_PROOT_16KB_PAGE_ALIGNMENT)
+    target_link_options(proot-loader PRIVATE
+        "LINKER:-z,max-page-size=16384"
+    )
+endif()
+
 # 关闭 PIE（与 -static -nostdlib 冲突）
 # 输出命名为 libproot-loader.so（AGP 只会打包 lib*.so 格式的文件到 APK）
 set_target_properties(proot-loader PROPERTIES
@@ -648,6 +666,12 @@ target_link_libraries(proot PRIVATE talloc)
 target_link_options(proot PRIVATE
     "LINKER:-z,noexecstack"
 )
+
+if(TINA_PROOT_16KB_PAGE_ALIGNMENT)
+    target_link_options(proot PRIVATE
+        "LINKER:-z,max-page-size=16384"
+    )
+endif()
 
 # 确保 loader 在 proot 之前构建（loader-info.c 依赖 loader 二进制）
 add_dependencies(proot proot-loader)
