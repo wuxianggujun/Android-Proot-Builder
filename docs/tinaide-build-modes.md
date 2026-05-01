@@ -4,24 +4,7 @@
 
 ## 构建模式
 
-### 1. Docker 产物模式（默认稳定链路）
-
-TinaIDE 主仓库仍保留 `docker/proot-build`：
-
-```powershell
-.\docker\proot-build\build-proot.ps1 -Arch arm64 -CopyToJniLibs
-.\docker\proot-build\build-proot.ps1 -Arch x86_64 -CopyToJniLibs
-```
-
-此模式在 Linux 容器内使用 Android NDK 交叉编译，产物复制到主仓库的预编译 PRoot source set。
-
-适用场景：
-
-- 发布前需要固定、可复现的二进制产物。
-- 本机没有完整 Android CMake/Ninja 环境。
-- 需要继续沿用历史 Docker 调试脚本。
-
-### 2. CMake 直接编译模式（实验链路）
+### 1. CMake 直接编译模式（默认链路）
 
 本子模块根目录提供 Android NDK CMake 构建入口，可直接生成：
 
@@ -31,10 +14,10 @@ libproot-loader.so
 libproot-loader32.so（仅需要 32 位兼容构建时）
 ```
 
-TinaIDE 主仓库通过 Gradle 属性启用：
+TinaIDE 主仓库默认会启用源码直编：
 
 ```powershell
-.\gradlew.bat :app:assembleArm64Debug '-Ptina.buildProotFromSource=true'
+.\gradlew.bat :app:assembleArm64Debug
 ```
 
 也可以独立调用 Android SDK 自带 CMake/Ninja：
@@ -53,6 +36,29 @@ $NINJA = "$SDK\cmake\3.22.1\bin\ninja.exe"
   -DCMAKE_BUILD_TYPE=Release
 
 & $CMAKE --build build-arm64 --target proot proot-loader -j 4
+```
+
+### 2. Docker 产物模式（可选回退链路）
+
+TinaIDE 主仓库仍保留 `docker/proot-build`：
+
+```powershell
+.\docker\proot-build\build-proot.ps1 -Arch arm64 -CopyToJniLibs
+.\docker\proot-build\build-proot.ps1 -Arch x86_64 -CopyToJniLibs
+```
+
+此模式在 Linux 容器内使用 Android NDK 交叉编译，产物复制到主仓库的预编译 PRoot source set。
+
+适用场景：
+
+- 发布前需要固定、可复现的二进制产物。
+- 本机没有完整 Android CMake/Ninja 环境。
+- 需要继续沿用历史 Docker 调试脚本。
+
+如需在 TinaIDE 主仓库中临时使用 Docker 产物，可执行：
+
+```powershell
+.\gradlew.bat :app:assembleArm64Debug '-Ptina.buildProotFromSource=false'
 ```
 
 ## TinaIDE 定制点
