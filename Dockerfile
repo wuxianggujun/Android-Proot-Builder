@@ -132,6 +132,7 @@ RUN set -e; \
     gawk \
     xz-utils \
     sed \
+    dos2unix \
     # 编译工具
     build-essential \
     make \
@@ -150,7 +151,7 @@ RUN set -e; \
       echo "[WARN] apt install failed, retry with official mirror..."; \
       write_official_sources; \
       apt_get_update; \
-      apt_get_install wget git file binutils gawk xz-utils sed build-essential make cmake autoconf automake libtool pkg-config python3 docbook-xsl xsltproc libarchive-dev \
+      apt_get_install wget git file binutils gawk xz-utils sed dos2unix build-essential make cmake autoconf automake libtool pkg-config python3 docbook-xsl xsltproc libarchive-dev \
     ); \
     update-alternatives --set awk /usr/bin/gawk 2>/dev/null || true; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -187,5 +188,7 @@ VOLUME ["/build/src"]
 # 输出目录
 VOLUME ["/output"]
 
-# 入口脚本：先准备源码，再编译
-CMD ["/bin/bash", "-c", "/build/scripts/prepare-source.sh && /build/scripts/build-android.sh"]
+# entrypoint 脚本：处理 Windows CRLF 问题后执行主脚本
+# 使用 printf 写入确保是 Unix LF 行尾（不被 volume 覆盖，因为 /entrypoint.sh 不在 volume 路径）
+RUN printf '#!/bin/bash\n# /build/scripts 是只读 volume，无法直接修改，先复制到可写目录再处理\nmkdir -p /build/run\ncp /build/scripts/*.sh /build/run/\ndos2unix /build/run/*.sh 2>/dev/null || true\nchmod +x /build/run/*.sh\n/bin/bash /build/run/prepare-source.sh && /bin/bash /build/run/build-android.sh\n' > /entrypoint.sh && chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
