@@ -1,4 +1,5 @@
 #include <errno.h>     /* E*, */
+#include <sched.h>     /* CLONE_*, */
 #include <signal.h>    /* SIGSYS, */
 #include <unistd.h>    /* getpgid, */
 #include <utime.h>     /* utimbuf, */
@@ -140,6 +141,29 @@ static int handle_seccomp_event_common(Tracee *tracee)
 	}
 
 	switch (sysnum) {
+	case PR_fork:
+		/* Android's app seccomp policy rejects fork(2) on x86_64.
+		 * Preserve fork semantics with the equivalent clone(2) call. */
+		set_sysnum(tracee, PR_clone);
+		poke_reg(tracee, SYSARG_1, SIGCHLD);
+		poke_reg(tracee, SYSARG_2, 0);
+		poke_reg(tracee, SYSARG_3, 0);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_vfork:
+		/* vfork(2) is subject to the same Android policy. */
+		set_sysnum(tracee, PR_clone);
+		poke_reg(tracee, SYSARG_1, CLONE_VM | CLONE_VFORK | SIGCHLD);
+		poke_reg(tracee, SYSARG_2, 0);
+		poke_reg(tracee, SYSARG_3, 0);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
 	case PR_open:
 		set_sysnum(tracee, PR_openat);
 		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
